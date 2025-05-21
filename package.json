@@ -1,0 +1,15 @@
+{
+  "name": "zenn-articles-tsukamoto",
+  "version": "1.0.0",
+  "description": "個人用のZenn記事管理用リポジトリ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "zenn-cli": "^0.1.159"
+  }
+}
