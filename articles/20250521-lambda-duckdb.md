@@ -1,80 +1,73 @@
 ---
-title: ""
+title: "Dockerイメージを使って、AWS Lambda 関数を構築・デプロイ・実行する方法（Python）"
 emoji: "👻"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: []
 published: false
 ---
 
-以下は、**Docker イメージを使って AWS Lambda 関数を構築・デプロイ・更新・実行する一連の手順**をまとめた技術記事のテンプレートです。必要に応じて Notion や Zenn に貼り付けられる構成になっています。
-
----
-
-# Lambda × Docker × DuckDB を用いたログ抽出基盤の構築メモ
-
 ## 概要
 
-このドキュメントでは、以下の構成で AWS Lambda 関数を構築・デプロイ・実行するワークフローについて記載します。
+このドキュメントでは、以下の構成で Dockerイメージを使って、AWS Lambda 関数を構築・デプロイ・実行するワークフローの実装方法について記載します。
 
-* Python + DuckDB を含む Lambda 関数の Dockerfile 作成
-* ECR への Docker イメージ Push
-* Terraform による Lambda 関数定義
-* CLI 経由での Lambda 更新・Invoke（実行）
+### 元となるベースイメージ
 
----
+今回、使用するランタイムは Python 3.12 とします。
+その他の言語でも、同様の手順で実装可能です。
 
-## 1. Lambda 関数（Docker イメージ構成）
-
-### ベースイメージ
+次の[AWS Lambda 用の公式 Python 3.12 イメージ](https://gallery.ecr.aws/lambda/python)をベースにLambda関数を構築して行きます。
 
 ```text
 public.ecr.aws/lambda/python:3.12
 ```
 
-AWS Lambda 用の公式 Python 3.12 イメージをベースにします。
 
-### ディレクトリ構成（例）
+### ディレクトリ構成
+
+下記のようなディレクトリ構成を想定しています。
 
 ```
 lambda/
 ├── Dockerfile
 ├── lambda_function.py
 ├── requirements.txt
-└── event.json
+...
 ```
 
----
+## Docker イメージをビルドするための準備
 
-## 2. Dockerfile の作成
+### 1. Dockerfileを作成する
 
-```dockerfile
+下記を例に、Dockerfileを作成します。
+
+```docker: Dockerfile
 FROM public.ecr.aws/lambda/python:3.12
 
-# 依存ライブラリをインストール
 COPY requirements.txt ${LAMBDA_TASK_ROOT}
 RUN pip install -r requirements.txt
 
-# Lambda関数本体をコピー
 COPY lambda_function.py ${LAMBDA_TASK_ROOT}
 
-# エントリポイント
 CMD [ "lambda_function.lambda_handler" ]
 ```
 
----
 
-## 3. requirements.txt
+### 2. requirements.txtに必要なライブラリを記載
+
+requirements.txtにインストールするライブラリを記載します。
+今回は、DuckDB（v0.10.1）と boto3（S3に接続する際に使用） をDLします。
 
 ```text
 duckdb==0.10.1
 boto3
 ```
 
----
 
-## 4. Lambda 関数のダミーコード（lambda\_function.py）
+### 3. Lambda 関数内で実行するPythonファイルを実装（lambda\_function.py）
 
-```python
+動作検証用に DuckDB を使用して、簡単な SQL クエリを実行する Lambda 関数を実装します。
+
+```python: lambda_function.py
 import json
 import duckdb
 import boto3
@@ -90,85 +83,99 @@ def lambda_handler(event, context):
     }
 ```
 
----
 
-## 5. Docker イメージのビルドと ECR への Push
+
+### 4. Docker イメージのビルドと ECR への Push
+
+上記のファイルを作成したら、Docker イメージをビルドして、ECR に Push します。
+事前に`test-lambda`という名前のリポジトリを ECR に作成しておく必要があります。
 
 ```bash
-# 変数定義
-export ECR_REPO=mikata-access-lambda
-export AWS_ACCOUNT_ID=502221051993
-export REGION=ap-northeast-1
+# プロジェクトルートに移動
+cd lambda
 
 # Dockerイメージのビルド
-docker buildx build --platform linux/amd64 --provenance=false -t ${ECR_REPO}:latest .
+docker buildx build --platform linux/amd64 --provenance=false -t test-lambda:latest .
 
 # タグ付け
-docker tag ${ECR_REPO}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:latest
+docker tag test-lambda:latest xxxx.dkr.ecr.ap-northeast-1.amazonaws.com/test-lambda:latest
 
 # ECRログイン
-aws ecr get-login-password --region ${REGION} | \
-  docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com
+aws ecr get-login-password --region ap-northeast-1 | \
+  docker login --username AWS --password-stdin xxxx.dkr.ecr.ap-northeast-1.amazonaws.com
 
-# Push
-docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:latest
+# ECRにPush
+docker push xxxx.dkr.ecr.ap-northeast-1.amazonaws.com/test-lambda:latest
 ```
 
----
 
-## 6. Lambda 関数の Terraform 定義（抜粋）
 
-```hcl
-resource "aws_lambda_function" "mikata_access_logs" {
-  function_name = "mikata_access_logs_reports-${var.environment}"
+### 5. TerraformでLambda 関数を作成する
+
+先ほど作成した Docker イメージを用いて、Terraform で Lambda 関数を作成します。
+ここではTerraformのコードの実装例を記載しますが、Terraformの実行方法については、[Terraform公式ドキュメント](https://developer.hashicorp.com/terraform/docs/cli)を参照してください。
+
+```hcl: lambda_sample.tf
+resource "aws_lambda_function""test_lambda" {
+  function_name = "test-lambda"
   package_type  = "Image"
-  image_uri     = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_repo}:latest"
-  role          = aws_iam_role.lambda_exec.arn
+  image_uri     = "xxxx.dkr.ecr.ap-northeast-1.amazonaws.com/test-lambda:latest" # image_uri に 先ほどECRプッシュしたイメージの URI を指定
+  role          = "arn:aws:iam::xxxx:role/lambda-execution-role"
   timeout       = 300
   memory_size   = 512
+  ...
 }
 ```
 
----
+Lambda関数の詳しい書き方は下記を参照してください。
+> aws_lambda_function (Terraform公式ドキュメント)
+> https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function.html
 
-## 7. Lambda 関数の更新
+
+
+## Lambda 関数の更新
+
+Dockerイメージを更新した場合、Lambda 関数を更新する必要があります。
+ECRにdocker pushしただけでは、古いイメージを参照してしまいます。（[AWS Lambda デベロッパーガイド](https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/python-image.html#python-image-clients)）
+
+AWS CLI を使用して Lambda 関数を更新する場合、以下のコマンドを実行します。
 
 ```bash
 aws lambda update-function-code \
-  --function-name "mikata_access_logs_reports-${ENVIRONMENT_NAME}" \
-  --image-uri "${AWS_ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com/${ECR_REPO}:latest"
+  --function-name "test-lambda" \
+  --image-uri "xxxx.dkr.ecr.ap-northeast-1.amazonaws.com/test-lambda:latest"
 ```
 
----
 
-## 8. Lambda 関数の実行（Invoke）
+
+## Lambda 関数の実行（Invoke）
+
+AWS CLI を使用して Lambda 関数を更新する場合、以下のコマンドを実行します。
 
 ```bash
 aws lambda invoke \
-  --function-name mikata_access_logs_reports-${ENVIRONMENT_NAME} \
+  --function-name "test-lambda" \
   --cli-binary-format raw-in-base64-out \
-  --payload file://event.json \
-  /dev/stdout | jq
+  --payload  '{"payload":"hello world!"}'
 ```
 
-`event.json` のサンプル：
+## ローカルでLambda 関数を実行する
 
-```json
-{
-  "company_id": "1690",
-  "start_date": "2025-04-01",
-  "end_date": "2025-04-30"
-}
+docker buildx build でビルドしたイメージは、ローカルでも実行可能です。
+
+ローカルで Lambda 関数を実行する場合、まず以下のコマンドを実行して、Docker イメージを起動します。
+
+```bash
+# Docker イメージを起動
+docker run --platform linux/amd64 -p 9000:8080 test-lambda:latest
 ```
 
----
+別のセッションで以下のコマンドを実行し、Lambda 関数を実行します。
+```bash
+# Lambda 関数を実行
+curl "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{"payload":"hello world!"}'
+```
 
-## おわりに
 
-DuckDB は Lambda のメモリDBとして扱えるので、データ加工・抽出処理に非常に便利です。`httpfs` を組み合わせれば S3 上のログを直接読み込むことも可能です。
-
-Terraform による Lambda 関数定義・デプロイパイプラインと合わせて、再利用性の高いログ抽出基盤を実現できます。
-
----
-
-必要に応じてこのテンプレートを Notion にコピペして使えます。さらに拡張したい場合（例：CloudWatch ログ、リトライ処理など）も対応できますので、お気軽にどうぞ。
+## 関連ページ
+https://docs.aws.amazon.com/ja_jp/lambda/latest/dg/python-image.html#python-image-instructions
