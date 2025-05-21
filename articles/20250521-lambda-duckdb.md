@@ -1,8 +1,8 @@
 ---
-title: "Dockerイメージを使って、AWS Lambda 関数を構築・デプロイ・実行する方法（Python）"
-emoji: "👻"
-type: "tech" # tech: 技術記事 / idea: アイデア
-topics: []
+title: "Dockerイメージを使って、AWS Lambda 関数（Python 3.12）をデプロイ・実行する方法"
+emoji: "🐳"
+type: "tech"
+topics: ["lambda", "duckdb", "docker", "python"]
 published: false
 ---
 
@@ -66,6 +66,9 @@ boto3
 ### 3. Lambda 関数内で実行するPythonファイルを実装（lambda\_function.py）
 
 動作検証用に DuckDB を使用して、簡単な SQL クエリを実行する Lambda 関数を実装します。
+
+> DuckDBとは
+> https://duckdb.org/docs/stable/index
 
 ```python: lambda_function.py
 import json
