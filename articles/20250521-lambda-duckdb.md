@@ -3,7 +3,7 @@ title: "Dockerイメージを使って、AWS Lambda 関数（Python 3.12）を�
 emoji: "🐳"
 type: "tech"
 topics: ["lambda", "duckdb", "docker", "python"]
-published: false
+published: true
 ---
 
 ## 概要
