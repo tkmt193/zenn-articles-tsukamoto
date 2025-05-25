@@ -1,5 +1,5 @@
 ---
-title: "HomebrewをWSL2に導入し、aws, aws-vaultをインストールする"
+title: "HomebrewをWSL2に導入し、awscli, aws-vaultをインストールする"
 emoji: "🍺"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["homebrew", "wsl2", "wsl", "aws", "windows"]
@@ -32,7 +32,7 @@ $ sudo apt-get install build-essential curl file git
 [Homebrew公式サイト](https://brew.sh/ja/)に従ってWSL上で下記を実行します。
 
 ```bash
- /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install
+$ /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install
 /HEAD/install.sh)"
 ```
 
