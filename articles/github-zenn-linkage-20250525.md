@@ -1,9 +1,9 @@
 ---
 title: "HomebrewをWSL2に導入し、aws, aws-vaultをインストールする"
-emoji: "🔥"
+emoji: "🍺"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["homebrew", "wsl2", "wsl", "aws", "windows"]
-published: false
+published: true
 ---
 
 
