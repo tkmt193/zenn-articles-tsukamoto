@@ -1,29 +1,10 @@
 ---
-title: "【入門】AWS Lambda + Docker + DuckDBで作るデータ処理基盤 - Python 3.12対応"
+title: "【実践ガイド】AWS Lambda + Docker + DuckDBで作るデータ処理基盤 - Python 3.12対応"
 emoji: "🐳"
 type: "tech"
 topics: ["lambda", "duckdb", "docker", "python", "aws"]
 published: true
 ---
-
-## 目次
-
-1. [はじめに](#はじめに)
-   - [前提条件](#前提条件)
-   - [環境情報](#環境情報)
-2. [アーキテクチャ概要](#アーキテクチャ概要)
-   - [ベースイメージ](#ベースイメージ)
-   - [ディレクトリ構成](#ディレクトリ構成)
-3. [実装手順](#実装手順)
-   - [Dockerfileの作成](#1-dockerfileを作成する)
-   - [依存関係の定義](#2-requirementstxtに必要なライブラリを記載)
-   - [Lambda関数の実装](#3-lambda-関数内で実行するpythonファイルを実装)
-   - [ビルドとデプロイ](#4-docker-イメージのビルドと-ecr-への-push)
-4. [運用とメンテナンス](#運用とメンテナンス)
-   - [Lambda関数の更新方法](#lambda-関数の更新)
-   - [モニタリングとロギング](#モニタリングとロギング)
-   - [トラブルシューティング](#トラブルシューティング)
-5. [参考リンクと関連リソース](#参考リンクと関連リソース)
 
 ## はじめに
 
@@ -194,6 +175,107 @@ aws ecr get-login-password --region ap-northeast-1 | \
 
 # ECRにPush
 docker push xxxx.dkr.ecr.ap-northeast-1.amazonaws.com/test-lambda:latest
+```
+
+### 5. Lambda関数のTerraform定義
+
+Terraformを使用してLambda関数とIAMロールを定義します。
+
+```hcl
+# Lambda実行用のIAMロール
+resource "aws_iam_role" "lambda_exec" {
+  name = "lambda_exec_role-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+# Lambda関数の定義
+resource "aws_lambda_function" "mikata_access_logs" {
+  function_name = "mikata_access_logs_reports-${var.environment}"
+  package_type  = "Image"
+  image_uri     = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_repo}:latest"
+  role          = aws_iam_role.lambda_exec.arn
+  timeout       = 300
+  memory_size   = 512
+}
+
+# 環境変数の定義例
+variable "environment" {
+  type        = string
+  description = "環境名（dev/stg/prod）"
+}
+
+variable "aws_account_id" {
+  type        = string
+  description = "AWSアカウントID"
+}
+
+variable "region" {
+  type        = string
+  description = "AWSリージョン"
+  default     = "ap-northeast-1"
+}
+
+variable "ecr_repo" {
+  type        = string
+  description = "ECRリポジトリ名"
+}
+```
+
+### 6. Lambda関数の実行
+
+AWS CLIを使用してLambda関数を実行する方法を説明します。
+
+```bash
+# Lambda関数の実行
+aws lambda invoke \
+  --function-name mikata_access_logs_reports-${ENVIRONMENT_NAME} \
+  --cli-binary-format raw-in-base64-out \
+  --payload file://event.json \
+  /dev/stdout | jq
+```
+
+`event.json` の例：特定期間のデータを処理する場合
+
+```json
+{
+  "company_id": "1690",
+  "start_date": "2025-04-01",
+  "end_date": "2025-04-30"
+}
+```
+
+実行時の注意点：
+- `ENVIRONMENT_NAME`は環境変数として設定しておく必要があります
+- `jq`コマンドを使用して出力をフォーマットしています
+- ペイロードは用途に応じてカスタマイズしてください
+
+### 7. ローカルでのテスト実行
+
+開発時はローカル環境でテストを行うことができます：
+
+```bash
+# Dockerコンテナの起動
+docker run --platform linux/amd64 -p 9000:8080 \
+  -e AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID} \
+  -e AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY} \
+  -e AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION} \
+  test-lambda:latest
+
+# 別ターミナルで関数を実行
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" \
+  -d @event.json | jq
 ```
 
 ## 運用とメンテナンス
