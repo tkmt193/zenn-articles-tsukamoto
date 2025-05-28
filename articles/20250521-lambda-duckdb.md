@@ -201,8 +201,8 @@ resource "aws_iam_role" "lambda_exec" {
 }
 
 # Lambda関数の定義
-resource "aws_lambda_function" "mikata_access_logs" {
-  function_name = "mikata_access_logs_reports-${var.environment}"
+resource "aws_lambda_function" "test_lambda" {
+  function_name = "test-lambda"
   package_type  = "Image"
   image_uri     = "${var.aws_account_id}.dkr.ecr.${var.region}.amazonaws.com/${var.ecr_repo}:latest"
   role          = aws_iam_role.lambda_exec.arn
@@ -240,24 +240,20 @@ AWS CLIを使用してLambda関数を実行する方法を説明します。
 ```bash
 # Lambda関数の実行
 aws lambda invoke \
-  --function-name mikata_access_logs_reports-${ENVIRONMENT_NAME} \
+  --function-name test-lambda \
   --cli-binary-format raw-in-base64-out \
   --payload file://event.json \
   /dev/stdout | jq
 ```
 
-`event.json` の例：特定期間のデータを処理する場合
-
+`event.json` の例：
 ```json
 {
-  "company_id": "1690",
-  "start_date": "2025-04-01",
-  "end_date": "2025-04-30"
+  "payload": "Hello"
 }
 ```
 
 実行時の注意点：
-- `ENVIRONMENT_NAME`は環境変数として設定しておく必要があります
 - `jq`コマンドを使用して出力をフォーマットしています
 - ペイロードは用途に応じてカスタマイズしてください
 
