@@ -2,8 +2,8 @@
 title: "「Xdebug: [Step Debug] Could not connect to ... 」が出た時のメモ"
 emoji: "😎"
 type: "tech" # tech: 技術記事 / idea: アイデア
-topics: []
-published: false
+topics: ["xdebug", "php"]
+published: true
 ---
 
 ## 📗 背景
