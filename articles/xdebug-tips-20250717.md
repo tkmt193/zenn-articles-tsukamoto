@@ -1,5 +1,5 @@
 ---
-title: "Xdebug 2 から 3 へのアップグレードで「Xdebug: [Step Debug] Could not connect to debugging client. Tried: host.docker.internal:9003 (through xdebug.client_host/xdebug.client_port) :-(」のエラーが出るようになった際の対応方法メモ"
+title: "「Xdebug: [Step Debug] Could not connect to ... 」が出た時のメモ"
 emoji: "😎"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: []
