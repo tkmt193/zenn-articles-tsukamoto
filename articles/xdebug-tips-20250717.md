@@ -26,7 +26,10 @@ Xdebug: [Step Debug] Could not connect to debugging client. Tried: host.docker.i
 この時、`php.ini` 内の Xdebug の設定は以下のように設定していました。
 
 ```text:php.ini
+xdebug.mode=debug
 xdebug.start_with_request=yes
+xdebug.client_host=host.docker.internal
+xdebug.client_port=9003
 ...
 ```
 
@@ -82,14 +85,16 @@ xdebug.start_with_request=trigger
 #### 例：
 `XDEBUG_TRIGGER`を、`$_ENV` / `$_GET` / `$_POST` / `$_COOKIE` に含めてトリガーする方法をいくつか紹介します。
 
-* JetBrains製のブラウザ拡張（例：**Xdebug Helper**）を使う方法
-  ↳ [公式ガイド](https://pleiades.io/help/phpstorm/browser-debugging-extensions.html#xdebug-helper-extension)
+ブラウザ拡張（例：**Xdebug Helper**）を使う方法
+JetBrains製のブラウザ拡張が利用できそうでした。
+  ↳ [JetBrains公式ガイド](https://pleiades.io/help/phpstorm/browser-debugging-extensions.html#xdebug-helper-extension)
 
-* クエリパラメータで明示する方法
-  ↳ `?XDEBUG_TRIGGER=1`
+クエリパラメータで明示する方法
+  ↳ `?XDEBUG_TRIGGER=1`をパスの最後尾につける
+例）https://fuga.jp/hogehoge?XDEBUG_TRIGGER=1
 
-* シェルからPHPファイルを実行する方法
-
+シェルからPHPファイルを実行する方法
+  ↳ 実行時にパラメータを渡す
 ```bash
 XDEBUG_TRIGGER=1 php index.php
 ```
