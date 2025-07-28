@@ -1,5 +1,5 @@
 ---
-title: "「Xdebug: [Step Debug] Could not connect to ... 」が出た時のメモ"
+title: "「Xdebug: [Step Debug] Could not connect to debugging client. 」が出た時のメモ"
 emoji: "😎"
 type: "tech" # tech: 技術記事 / idea: アイデア
 topics: ["xdebug", "php"]
